@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kong JWT Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header h1 { font-size: 1.2rem; font-weight: 600; }
+    header .badge {
+      font-size: 0.7rem;
+      background: #0ea5e9;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 0;
+      height: calc(100vh - 57px);
+    }
+
+    .sidebar {
+      background: #1e293b;
+      border-right: 1px solid #334155;
+      padding: 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .main {
+      padding: 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .card h2 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #94a3b8;
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-bottom: 4px;
+    }
+
+    input {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: #e2e8f0;
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus { border-color: #0ea5e9; }
+
+    button {
+      width: 100%;
+      padding: 9px 16px;
+      border-radius: 6px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    button:hover { opacity: 0.85; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-primary { background: #0ea5e9; color: white; }
+    .btn-success { background: #10b981; color: white; }
+    .btn-warning { background: #f59e0b; color: white; }
+    .btn-danger  { background: #ef4444; color: white; }
+    .btn-ghost   {
+      background: transparent;
+      color: #94a3b8;
+      border: 1px solid #334155;
+    }
+
+    .token-display {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.7rem;
+      word-break: break-all;
+      color: #a78bfa;
+      max-height: 100px;
+      overflow-y: auto;
+      margin-top: 8px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 99px;
+    }
+    .status-pill.ok  { background: #064e3b; color: #34d399; }
+    .status-pill.err { background: #450a0a; color: #f87171; }
+    .status-pill.idle { background: #1e293b; color: #64748b; border: 1px solid #334155; }
+
+    .response-box {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 14px;
+      margin-top: 8px;
+    }
+
+    .response-box pre {
+      font-family: 'Courier New', monospace;
+      font-size: 0.78rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #a3e635;
+    }
+
+    .response-box.error pre { color: #f87171; }
+
+    .endpoint-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .method-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      min-width: 44px;
+      text-align: center;
+    }
+    .method-get  { background: #1d4ed8; color: #bfdbfe; }
+    .method-post { background: #92400e; color: #fde68a; }
+
+    .path-label {
+      font-family: 'Courier New', monospace;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      flex: 1;
+    }
+
+    .divider {
+      height: 1px;
+      background: #334155;
+      margin: 8px 0;
+    }
+
+    .info-box {
+      background: #0c1a2e;
+      border: 1px solid #1e3a5f;
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 0.8rem;
+      color: #93c5fd;
+      line-height: 1.5;
+    }
+
+    .user-hint {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-bottom: 4px;
+    }
+
+    .section-sub {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span>🔐</span>
+  <h1>Kong JWT Validation Demo</h1>
+  <span class="badge">PoC</span>
+</header>
+
+<div class="layout">
+  <!-- Sidebar: Auth -->
+  <aside class="sidebar">
+    <div>
+      <div class="section-title">1. Get a JWT</div>
+      <div class="section-sub">Log in to receive a token. Kong will validate it on protected routes.</div>
+
+      <label>Username</label>
+      <input id="username" value="alice" placeholder="alice or bob" />
+      <p class="user-hint">alice / password123 &nbsp;·&nbsp; bob / letmein</p>
+
+      <label style="margin-top:12px">Password</label>
+      <input id="password" type="password" value="password123" />
+
+      <button class="btn-primary" onclick="login()" style="margin-top:4px">Login → Get JWT</button>
+
+      <div id="login-status" style="margin-top:10px"></div>
+    </div>
+
+    <div id="token-section" style="display:none">
+      <div class="divider"></div>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px">
+        <span style="font-size:0.8rem; color:#94a3b8; font-weight:600">CURRENT TOKEN</span>
+        <button class="btn-ghost" onclick="clearToken()" style="width:auto; padding:3px 10px; font-size:0.75rem">Clear</button>
+      </div>
+      <div class="token-display" id="token-display"></div>
+      <div style="margin-top:8px" id="token-claims"></div>
+    </div>
+
+    <div>
+      <div class="divider"></div>
+      <div class="info-box">
+        <strong>How it works</strong><br><br>
+        1. Your app calls <code>/auth/login</code> (open) to get a signed JWT.<br><br>
+        2. Kong validates the JWT on <code>/api/protected/*</code> by matching the <code>iss</code> claim to a consumer credential and verifying the signature.<br><br>
+        3. The Node API never sees unauthenticated requests — Kong rejects them first.
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main: Endpoint testing -->
+  <main class="main">
+    <div class="card">
+      <h2>2. Call API Endpoints</h2>
+
+      <!-- Public -->
+      <div class="endpoint-row">
+        <span class="method-badge method-get">GET</span>
+        <span class="path-label">/api/public</span>
+        <span class="status-pill idle" id="public-status">idle</span>
+        <button class="btn-success" onclick="callEndpoint('public')" style="width:auto; padding:7px 14px">Call</button>
+      </div>
+      <div style="font-size:0.78rem; color:#64748b; margin-bottom:12px; padding-left:52px">
+        Open endpoint — no JWT needed. Kong forwards unconditionally.
+      </div>
+      <div id="public-response" style="display:none" class="response-box">
+        <pre id="public-response-body"></pre>
+      </div>
+
+      <div class="divider" style="margin: 16px 0"></div>
+
+      <!-- Protected: data -->
+      <div class="endpoint-row">
+        <span class="method-badge method-get">GET</span>
+        <span class="path-label">/api/protected/data</span>
+        <span class="status-pill idle" id="data-status">idle</span>
+        <button class="btn-warning" onclick="callEndpoint('data')" style="width:auto; padding:7px 14px">Call</button>
+      </div>
+      <div style="font-size:0.78rem; color:#64748b; margin-bottom:12px; padding-left:52px">
+        🔒 JWT required — Kong blocks this with 401 if no valid token is present.
+      </div>
+      <div id="data-response" style="display:none" class="response-box">
+        <pre id="data-response-body"></pre>
+      </div>
+
+      <div class="divider" style="margin: 16px 0"></div>
+
+      <!-- Protected: profile -->
+      <div class="endpoint-row">
+        <span class="method-badge method-get">GET</span>
+        <span class="path-label">/api/protected/profile</span>
+        <span class="status-pill idle" id="profile-status">idle</span>
+        <button class="btn-warning" onclick="callEndpoint('profile')" style="width:auto; padding:7px 14px">Call</button>
+      </div>
+      <div style="font-size:0.78rem; color:#64748b; margin-bottom:12px; padding-left:52px">
+        🔒 JWT required — returns claims that Kong forwarded as request headers.
+      </div>
+      <div id="profile-response" style="display:none" class="response-box">
+        <pre id="profile-response-body"></pre>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3. Test Invalid / Missing Token</h2>
+      <div style="font-size:0.82rem; color:#94a3b8; margin-bottom:12px">
+        Send a request to a protected endpoint with a tampered or missing JWT to see Kong's 401 response.
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn-danger" onclick="callWithBadToken()" style="width:auto; padding:8px 16px">Send tampered JWT</button>
+        <button class="btn-danger" onclick="callWithNoToken()" style="width:auto; padding:8px 16px">Send no token</button>
+      </div>
+      <div id="bad-response" style="display:none; margin-top:12px" class="response-box error">
+        <pre id="bad-response-body"></pre>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  // Kong proxy is on port 8000 — all traffic goes through it
+  const KONG = 'http://localhost:8000';
+  let currentToken = null;
+
+  async function login() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const statusEl = document.getElementById('login-status');
+
+    statusEl.innerHTML = '<span class="status-pill idle">logging in…</span>';
+
+    try {
+      const res = await fetch(`${KONG}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        statusEl.innerHTML = `<span class="status-pill err">✗ ${data.error || 'Login failed'}</span>`;
+        return;
+      }
+
+      currentToken = data.token;
+      statusEl.innerHTML = `<span class="status-pill ok">✓ Logged in as ${data.user.name} (${data.user.role})</span>`;
+
+      document.getElementById('token-section').style.display = 'block';
+      document.getElementById('token-display').textContent = currentToken;
+      document.getElementById('token-claims').innerHTML = renderClaims(parseJwt(currentToken));
+    } catch (err) {
+      statusEl.innerHTML = `<span class="status-pill err">✗ Network error — is Kong running?</span>`;
+    }
+  }
+
+  function clearToken() {
+    currentToken = null;
+    document.getElementById('token-section').style.display = 'none';
+    document.getElementById('login-status').innerHTML = '<span class="status-pill idle">Logged out</span>';
+  }
+
+  const ENDPOINTS = {
+    public:  { url: `${KONG}/api/public`,           auth: false },
+    data:    { url: `${KONG}/api/protected/data`,   auth: true  },
+    profile: { url: `${KONG}/api/protected/profile`,auth: true  },
+  };
+
+  async function callEndpoint(name) {
+    const { url, auth } = ENDPOINTS[name];
+    const statusEl = document.getElementById(`${name}-status`);
+    const responseEl = document.getElementById(`${name}-response`);
+    const bodyEl = document.getElementById(`${name}-response-body`);
+
+    statusEl.className = 'status-pill idle';
+    statusEl.textContent = 'calling…';
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (auth && currentToken) headers['Authorization'] = `Bearer ${currentToken}`;
+
+    try {
+      const res = await fetch(url, { headers });
+      const text = await res.text();
+      let formatted;
+      try { formatted = JSON.stringify(JSON.parse(text), null, 2); } catch { formatted = text; }
+
+      statusEl.className = `status-pill ${res.ok ? 'ok' : 'err'}`;
+      statusEl.textContent = res.ok ? `✓ ${res.status}` : `✗ ${res.status}`;
+      responseEl.className = `response-box${res.ok ? '' : ' error'}`;
+      bodyEl.textContent = formatted;
+      responseEl.style.display = 'block';
+    } catch (err) {
+      statusEl.className = 'status-pill err';
+      statusEl.textContent = '✗ network';
+      bodyEl.textContent = err.message;
+      responseEl.style.display = 'block';
+    }
+  }
+
+  async function callWithBadToken() {
+    const fakeToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.' +
+      btoa(JSON.stringify({ iss: 'kong-demo', sub: 'hacker', exp: 9999999999 })).replace(/=/g,'') +
+      '.INVALIDSIGNATURE_tampered';
+
+    await _callBad('Bearer ' + fakeToken, 'Tampered JWT');
+  }
+
+  async function callWithNoToken() {
+    await _callBad(null, 'No token');
+  }
+
+  async function _callBad(authHeader, label) {
+    const responseEl = document.getElementById('bad-response');
+    const bodyEl = document.getElementById('bad-response-body');
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (authHeader) headers['Authorization'] = authHeader;
+
+    try {
+      const res = await fetch(`${KONG}/api/protected/data`, { headers });
+      const text = await res.text();
+      let formatted;
+      try { formatted = JSON.stringify(JSON.parse(text), null, 2); } catch { formatted = text; }
+
+      bodyEl.textContent = `[${label}] HTTP ${res.status}\n\n${formatted}`;
+      responseEl.style.display = 'block';
+    } catch (err) {
+      bodyEl.textContent = `[${label}] Network error: ${err.message}`;
+      responseEl.style.display = 'block';
+    }
+  }
+
+  function parseJwt(token) {
+    try {
+      return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    } catch { return null; }
+  }
+
+  function renderClaims(claims) {
+    if (!claims) return '';
+    const exp = claims.exp ? new Date(claims.exp * 1000).toLocaleTimeString() : '?';
+    return `
+      <div style="font-size:0.75rem; color:#94a3b8; margin-top:6px; line-height:1.7">
+        <span style="color:#34d399">iss:</span> ${claims.iss} &nbsp;
+        <span style="color:#34d399">sub:</span> ${claims.sub} &nbsp;
+        <span style="color:#34d399">role:</span> ${claims.role}<br>
+        <span style="color:#34d399">expires:</span> ${exp}
+      </div>`;
+  }
+</script>
+
+</body>
+</html>

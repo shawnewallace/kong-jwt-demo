@@ -1,0 +1,79 @@
+_format_version: "3.0"
+_transform: true
+
+# ── Services ──────────────────────────────────────────────────────────────────
+# A single upstream service (the Node API). Routes below decide which paths
+# require JWT validation and which are open.
+
+services:
+  - name: node-api
+    url: http://api:3001
+
+    routes:
+      # Public endpoint — no auth required
+      - name: public-route
+        paths:
+          - /api/public
+        methods: [GET, OPTIONS]
+        strip_path: false
+
+      # Auth endpoint — issues JWTs, obviously must stay open
+      - name: auth-route
+        paths:
+          - /auth
+        methods: [POST, OPTIONS]
+        strip_path: false
+
+      # Protected endpoints — Kong enforces JWT here
+      - name: protected-route
+        paths:
+          - /api/protected
+        methods: [GET, OPTIONS]
+        strip_path: false
+        plugins:
+          - name: jwt
+            config:
+              # Look for the token in the Authorization: Bearer <token> header
+              header_names:
+                - Authorization
+              # The claim Kong uses to look up the consumer credential (must match
+              # the `key` field in the jwt_secrets block below)
+              key_claim_name: iss
+              secret_is_base64: false
+
+# ── Consumers & JWT credentials ───────────────────────────────────────────────
+# Kong resolves the consumer by matching the JWT `iss` claim to a credential
+# `key`, then validates the signature using the corresponding `secret`.
+# The Node API signs tokens with the SAME secret.
+
+consumers:
+  - username: demo-consumer
+    jwt_secrets:
+      - key: "kong-demo"
+        secret: "demo-secret-change-in-production"
+
+# ── Global plugins ────────────────────────────────────────────────────────────
+plugins:
+  # CORS — required because the browser (localhost:3000) calls Kong (localhost:8000)
+  - name: cors
+    config:
+      origins:
+        - "http://localhost:3000"
+      methods:
+        - GET
+        - POST
+        - OPTIONS
+      headers:
+        - Authorization
+        - Content-Type
+      exposed_headers:
+        - Authorization
+      credentials: true
+      max_age: 3600
+
+  # Rate limiting on protected routes
+  - name: rate-limiting
+    route: protected-route
+    config:
+      minute: 60
+      policy: local
